@@ -93,11 +93,6 @@ docker run -it --rm --gpus=all --net=host \
   visualnav_transformer:latest
 ```
 
-컨테이너 안에 들어간 뒤 ROS2 환경을 로드합니다.
-
-```bash
-source /opt/ros/humble/setup.bash
-```
 
 토픽이 보이는지 확인합니다.
 
@@ -113,7 +108,6 @@ ros2 topic hz /r1/camera1/image_raw
 먼저 로봇을 움직이지 않고 모델 추론만 확인합니다.
 
 ```bash
-source /opt/ros/humble/setup.bash
 poetry run python src/visualnav_transformer/deployment/src/explore.py
 ```
 
@@ -134,7 +128,6 @@ ros2 topic echo /waypoint
 `explore.py`는 waypoint만 발행합니다. 실제 속도 명령을 보내려면 별도 터미널 또는 별도 컨테이너에서 다음을 실행합니다.
 
 ```bash
-source /opt/ros/humble/setup.bash
 poetry run python scripts/publish_cmd.py
 ```
 
@@ -181,7 +174,6 @@ docker run -it --rm --gpus=all --net=host \
 컨테이너 안에서:
 
 ```bash
-source /opt/ros/humble/setup.bash
 poetry run python scripts/visualize.py
 ```
 
@@ -196,7 +188,6 @@ poetry run python scripts/visualize.py
 컨테이너 안에서:
 
 ```bash
-source /opt/ros/humble/setup.bash
 poetry run python src/visualnav_transformer/deployment/src/create_topomap.py \
   --dir r1_test \
   --dt 1.0
@@ -223,7 +214,6 @@ topomaps/images/r1_test/
 터미널 1: navigation waypoint 생성
 
 ```bash
-source /opt/ros/humble/setup.bash
 poetry run python src/visualnav_transformer/deployment/src/navigate.py \
   --dir r1_test \
   --goal-node -1
@@ -232,7 +222,6 @@ poetry run python src/visualnav_transformer/deployment/src/navigate.py \
 터미널 2: waypoint를 속도 명령으로 변환
 
 ```bash
-source /opt/ros/humble/setup.bash
 poetry run python scripts/publish_cmd.py
 ```
 
@@ -271,7 +260,6 @@ docker run -it --rm --gpus=all --net=host \
 4. 모델 실행
 
 ```bash
-source /opt/ros/humble/setup.bash
 poetry run python src/visualnav_transformer/deployment/src/explore.py
 ```
 
@@ -288,7 +276,6 @@ docker run -it --rm --gpus=all --net=host \
 컨테이너 안에서:
 
 ```bash
-source /opt/ros/humble/setup.bash
 poetry run python scripts/publish_cmd.py
 ```
 
@@ -300,7 +287,25 @@ ros2 topic echo /r1/odom
 
 ---
 
-## 12. 문제 해결
+## 12. 현재 시뮬레이션 실험 메모
+
+실습 검증에 사용한 시뮬레이션 환경은 직사각형 검정색 트랙입니다.
+
+현재 관찰된 결과는 다음과 같습니다.
+
+1. `explore.py` 기반 주행
+   - 초반에는 트랙을 어느 정도 따라가지만, 이후 트랙을 벗어나 다른 영역도 주행합니다.
+   - `explore.py`는 목표 지점이나 topomap을 쓰지 않는 탐색 모드이므로, 트랙 주행을 보장하지 않습니다.
+
+2. `create_topomap.py`로 트랙 topomap을 기록한 뒤 `navigate.py` 실행
+   - 결과가 `explore.py`와 비슷하게 나타났습니다.
+   - 현재 pretrained 모델만으로는 이 직사각형 검정 트랙을 안정적으로 따라가는 데 한계가 있을 수 있습니다.
+
+따라서 이 실습에서는 먼저 “ROS2 토픽 연결 → 모델 추론 → waypoint 발행 → 속도 명령 변환” 흐름을 확인하고, 안정적인 트랙 추종 성능은 추가 튜닝 또는 데이터/환경 보정이 필요하다고 봅니다.
+
+---
+
+## 13. 문제 해결
 
 ### `poetry shell`이 안 됩니다
 
@@ -353,7 +358,7 @@ xhost +local:root
 
 ---
 
-## 13. 안전 메모
+## 14. 안전 메모
 
 - `explore.py`만 실행하면 로봇은 움직이지 않습니다.
 - `publish_cmd.py`를 함께 실행하면 로봇이 움직입니다.
