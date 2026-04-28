@@ -52,9 +52,6 @@ RUN pip3 install gdown
 # Install Poetry
 RUN pip3 install poetry
 
-# Clone the VisualNav-Transformer repository
-RUN git clone https://github.com/Robotecai/visualnav-transformer-ros2.git /visualnav-transformer
-
 # Set up environment variables
 RUN echo "source /opt/ros/humble/setup.bash" >> ~/.bashrc
 
@@ -62,8 +59,10 @@ RUN echo "source /opt/ros/humble/setup.bash" >> ~/.bashrc
 RUN apt-get clean && \
     rm -rf /var/lib/apt/lists/*
 
-# Set the working directory
+# Copy this repository into the image.
+# This keeps fork/local changes in sync with the Docker image.
 WORKDIR /visualnav-transformer
+COPY . /visualnav-transformer
 
 # Install dependencies using Poetry
 RUN poetry install --no-interaction --no-ansi

@@ -1,9 +1,11 @@
+import os
+
 # topic names for ROS communication
 
 # image obs topics
 FRONT_IMAGE_TOPIC = "/usb_cam_front/image_raw"
 REVERSE_IMAGE_TOPIC = "/usb_cam_reverse/image_raw"
-IMAGE_TOPIC = "/camera/camera/color/image_raw"
+IMAGE_TOPIC = os.environ.get("VNT_IMAGE_TOPIC", "/camera/camera/color/image_raw")
 
 # exploration topics
 SUBGOALS_TOPIC = "/subgoals"
@@ -34,3 +36,4 @@ BUMPER_TOPIC = "/mobile_base/events/bumper"
 JOY_BUMPER_TOPIC = "/joy_bumper"
 
 # move the robot
+CMD_VEL_TOPIC = os.environ.get("VNT_CMD_VEL_TOPIC", "/cmd_vel")
