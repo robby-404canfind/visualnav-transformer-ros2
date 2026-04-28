@@ -60,4 +60,10 @@ carla:
 sacson:
   metric_waypoint_spacing: 0.255
 
+r1_track:
+  # Must match the median frame-to-frame distance of the exported dataset.
+  # The default recorder uses --min-distance 0.05, so this is a safe initial value.
+  # Recompute with: poetry run python scripts/inspect_dataset.py datasets/r1_track
+  metric_waypoint_spacing: 0.05
+
 # add your own dataset params here:

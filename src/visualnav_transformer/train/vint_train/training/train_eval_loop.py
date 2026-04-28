@@ -20,6 +20,11 @@ from visualnav_transformer.train.vint_train.training.train_utils import (
 )
 
 
+def _wandb_log(use_wandb: bool, *args, **kwargs) -> None:
+    if use_wandb:
+        wandb.log(*args, **kwargs)
+
+
 def train_eval_loop(
     train_model: bool,
     model: nn.Module,
@@ -124,7 +129,7 @@ def train_eval_loop(
             "scheduler": scheduler,
         }
         # log average eval loss
-        wandb.log({}, commit=False)
+        _wandb_log(use_wandb, {}, commit=False)
 
         if scheduler is not None:
             # scheduler calls based on the type of scheduler
@@ -132,7 +137,8 @@ def train_eval_loop(
                 scheduler.step(np.mean(avg_total_test_loss))
             else:
                 scheduler.step()
-        wandb.log(
+        _wandb_log(
+            use_wandb,
             {
                 "avg_total_test_loss": np.mean(avg_total_test_loss),
                 "lr": optimizer.param_groups[0]["lr"],
@@ -145,7 +151,7 @@ def train_eval_loop(
         torch.save(checkpoint, numbered_path)  # keep track of model at every epoch
 
     # Flush the last set of eval logs
-    wandb.log({})
+    _wandb_log(use_wandb, {})
     print()
 
 
@@ -221,7 +227,6 @@ def train_eval_loop_nomad(
                 use_wandb=use_wandb,
                 alpha=alpha,
             )
-            lr_scheduler.step()
 
         numbered_path = os.path.join(project_folder, f"ema_{epoch}.pth")
         torch.save(ema_model.averaged_model.state_dict(), numbered_path)
@@ -265,7 +270,8 @@ def train_eval_loop_nomad(
                     use_wandb=use_wandb,
                     eval_fraction=eval_fraction,
                 )
-        wandb.log(
+        _wandb_log(
+            use_wandb,
             {
                 "lr": optimizer.param_groups[0]["lr"],
             },
@@ -276,9 +282,10 @@ def train_eval_loop_nomad(
             lr_scheduler.step()
 
         # log average eval loss
-        wandb.log({}, commit=False)
+        _wandb_log(use_wandb, {}, commit=False)
 
-        wandb.log(
+        _wandb_log(
+            use_wandb,
             {
                 "lr": optimizer.param_groups[0]["lr"],
             },
@@ -286,7 +293,7 @@ def train_eval_loop_nomad(
         )
 
     # Flush the last set of eval logs
-    wandb.log({})
+    _wandb_log(use_wandb, {})
     print()
 
 

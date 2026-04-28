@@ -14,5 +14,9 @@ nomad:
   config_path: "src/visualnav_transformer/train/config/nomad.yaml"
   ckpt_path: "model_weights/nomad.pth"
 
+nomad_r1:
+  config_path: "src/visualnav_transformer/train/config/nomad_r1.yaml"
+  ckpt_path: "model_weights/nomad_r1_ema.pth"
+
 
 # add your own model configs here after saving the *.pth file to ../model_weight

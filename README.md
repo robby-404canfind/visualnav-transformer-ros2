@@ -32,10 +32,25 @@ publish_cmd.py
 | `create_topomap.py` | 수동 주행 중 카메라 이미지를 저장해 topomap을 만듭니다. |
 | `navigate.py` | 저장된 topomap을 따라 목표 이미지까지 이동합니다. |
 | `topic_names.py` | 카메라/속도 명령 등 ROS2 토픽 이름을 관리합니다. |
+| `export_ros2_dataset.py` | ROS2 카메라/pose 토픽을 학습 데이터셋 형식으로 기록합니다. |
+| `inspect_dataset.py` | 기록된 trajectory의 spacing, pose jump 등을 점검합니다. |
 
 ---
 
-## 2. 저장소 클론
+## 2. 목적별 가이드
+
+이 README는 실행/검증 중심의 빠른 사용법을 다룹니다.
+
+| 목적 | 볼 곳 |
+|---|---|
+| pretrained 모델로 ROS2 시뮬레이터 연결 확인 | 이 README의 5~12장 |
+| trajectory 후보 시각화 | 이 README의 8장 |
+| topomap 기반 navigation 검증 | 이 README의 9~10장 |
+| r1 트랙 데이터 수집과 NoMaD 파인튜닝 | [`docs/r1_finetuning_guide.md`](docs/r1_finetuning_guide.md) |
+
+---
+
+## 3. 저장소 클론
 
 ```bash
 git clone https://github.com/robby-404canfind/visualnav-transformer-ros2.git
@@ -44,7 +59,7 @@ cd visualnav-transformer-ros2
 
 ---
 
-## 3. Docker 이미지 빌드
+## 4. Docker 이미지 빌드
 
 ```bash
 docker build -t visualnav_transformer:latest .
@@ -56,7 +71,7 @@ docker build -t visualnav_transformer:latest .
 
 ---
 
-## 4. ROS2 토픽 설정
+## 5. ROS2 토픽 설정
 
 기본 토픽은 다음과 같습니다.
 
@@ -81,7 +96,7 @@ VNT_CMD_VEL_TOPIC=/r1/cmd_vel
 
 ---
 
-## 5. 컨테이너 실행
+## 6. 컨테이너 실행
 
 r1 시뮬레이터 기준 실행 예시는 다음과 같습니다.
 
@@ -103,7 +118,7 @@ ros2 topic hz /r1/camera1/image_raw
 
 ---
 
-## 6. 모델만 먼저 실행하기: `explore.py`
+## 7. 모델만 먼저 실행하기: `explore.py`
 
 먼저 로봇을 움직이지 않고 모델 추론만 확인합니다.
 
@@ -123,7 +138,7 @@ ros2 topic echo /waypoint
 
 ---
 
-## 7. 로봇 움직이기: `publish_cmd.py`
+## 8. 로봇 움직이기: `publish_cmd.py`
 
 `explore.py`는 waypoint만 발행합니다. 실제 속도 명령을 보내려면 별도 터미널 또는 별도 컨테이너에서 다음을 실행합니다.
 
@@ -149,7 +164,7 @@ ros2 topic pub --once /r1/cmd_vel geometry_msgs/msg/Twist "{}"
 
 ---
 
-## 8. 시각화: `visualize.py`
+## 9. 시각화: `visualize.py`
 
 모델이 예측한 trajectory 후보를 이미지 위에 보고 싶으면 `visualize.py`를 실행합니다.
 
@@ -181,7 +196,7 @@ poetry run python scripts/visualize.py
 
 ---
 
-## 9. Topomap 만들기
+## 10. Topomap 만들기
 
 목표 지점까지 이동하려면 먼저 환경의 topomap을 만들어야 합니다.
 
@@ -207,7 +222,7 @@ topomaps/images/r1_test/
 
 ---
 
-## 10. Topomap 기반 주행: `navigate.py`
+## 11. Topomap 기반 주행: `navigate.py`
 
 저장한 topomap을 따라 목표 지점까지 이동합니다.
 
@@ -237,7 +252,7 @@ poetry run python src/visualnav_transformer/deployment/src/navigate.py \
 
 ---
 
-## 11. r1 시뮬레이터 빠른 검증 순서
+## 12. r1 시뮬레이터 빠른 검증 순서
 
 1. 시뮬레이터 실행
 2. 토픽 확인
@@ -287,7 +302,7 @@ ros2 topic echo /r1/odom
 
 ---
 
-## 12. 현재 시뮬레이션 실험 메모
+## 13. 현재 시뮬레이션 실험 메모
 
 실습 검증에 사용한 시뮬레이션 환경은 직사각형 검정색 트랙입니다.
 
@@ -305,7 +320,37 @@ ros2 topic echo /r1/odom
 
 ---
 
-## 13. 문제 해결
+## 14. 파인튜닝 개요
+
+pretrained NoMaD가 직사각형 검정 트랙을 안정적으로 따라가지 못한다면, r1 시뮬레이터에서 사람이 직접 잘 주행한 데이터를 수집해 파인튜닝할 수 있습니다.
+
+학습 데이터/결과 보존을 위해 파인튜닝 작업 컨테이너는 `datasets`, `data_splits`, `src/visualnav_transformer/train/logs`, `model_weights`를 볼륨으로 연결해서 사용합니다.
+
+핵심 절차는 다음과 같습니다.
+
+```text
+수동 주행 데이터 수집
+  ↓
+카메라 이미지 + /r1/odom pose 저장
+  ↓
+데이터 품질 검사
+  ↓
+train/test split 생성
+  ↓
+NoMaD checkpoint에서 fine-tuning
+  ↓
+시뮬레이터에서 재검증
+```
+
+학습 라벨용 pose는 기본적으로 `/r1/odom`을 사용합니다. `/r1/amcl_pose`는 map 기준 pose라 직관적일 수 있지만, localization correction으로 pose가 튀면 학습 라벨이 깨질 수 있습니다. 자세한 수집/학습 절차는 아래 문서를 참고하세요.
+
+```text
+docs/r1_finetuning_guide.md
+```
+
+---
+
+## 15. 문제 해결
 
 ### `poetry shell`이 안 됩니다
 
@@ -358,7 +403,7 @@ xhost +local:root
 
 ---
 
-## 14. 안전 메모
+## 16. 안전 메모
 
 - `explore.py`만 실행하면 로봇은 움직이지 않습니다.
 - `publish_cmd.py`를 함께 실행하면 로봇이 움직입니다.
