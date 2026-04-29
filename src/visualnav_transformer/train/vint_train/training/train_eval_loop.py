@@ -1,3 +1,4 @@
+import copy
 import os
 from typing import Dict, Optional
 
@@ -23,6 +24,53 @@ from visualnav_transformer.train.vint_train.training.train_utils import (
 def _wandb_log(use_wandb: bool, *args, **kwargs) -> None:
     if use_wandb:
         wandb.log(*args, **kwargs)
+
+
+class _EMAModelAdapter:
+    """Compatibility wrapper for newer diffusers EMAModel APIs.
+
+    Older NoMaD training code expects diffusers.EMAModel to be constructed with
+    `model=...`, expose `averaged_model`, and accept `step(model)`. diffusers
+    0.29+ instead tracks an iterable of parameters. This adapter preserves the
+    old call sites while using the installed diffusers API.
+    """
+
+    def __init__(self, model: nn.Module, power: float = 0.75):
+        self.averaged_model = copy.deepcopy(model)
+        self.averaged_model.eval()
+        for parameter in self.averaged_model.parameters():
+            parameter.requires_grad_(False)
+
+        self._ema = EMAModel(model.parameters(), power=power)
+        self._sync_to_model_device(model)
+        self._copy_to_averaged_model()
+
+    def _sync_to_model_device(self, model: nn.Module) -> None:
+        device = next(model.parameters()).device
+        self.averaged_model.to(device)
+        self._ema.to(device=device)
+
+    def _copy_to_averaged_model(self) -> None:
+        self._ema.copy_to(self.averaged_model.parameters())
+
+    def step(self, model: nn.Module) -> None:
+        self._sync_to_model_device(model)
+        self._ema.step(model.parameters())
+        self._copy_to_averaged_model()
+
+    def state_dict(self) -> dict:
+        return self._ema.state_dict()
+
+    def load_state_dict(self, state_dict: dict) -> None:
+        self._ema.load_state_dict(state_dict)
+        self._copy_to_averaged_model()
+
+
+def _make_ema_model(model: nn.Module, power: float = 0.75):
+    try:
+        return EMAModel(model=model, power=power)
+    except TypeError:
+        return _EMAModelAdapter(model=model, power=power)
 
 
 def train_eval_loop(
@@ -204,7 +252,7 @@ def train_eval_loop_nomad(
         eval_freq: frequency of evaluation
     """
     latest_path = os.path.join(project_folder, f"latest.pth")
-    ema_model = EMAModel(model=model, power=0.75)
+    ema_model = _make_ema_model(model=model, power=0.75)
 
     for epoch in range(current_epoch, current_epoch + epochs):
         if train_model:
@@ -229,9 +277,10 @@ def train_eval_loop_nomad(
             )
 
         numbered_path = os.path.join(project_folder, f"ema_{epoch}.pth")
+        latest_ema_path = os.path.join(project_folder, f"ema_latest.pth")
         torch.save(ema_model.averaged_model.state_dict(), numbered_path)
-        numbered_path = os.path.join(project_folder, f"ema_latest.pth")
-        print(f"Saved EMA model to {numbered_path}")
+        torch.save(ema_model.averaged_model.state_dict(), latest_ema_path)
+        print(f"Saved EMA model to {latest_ema_path}")
 
         numbered_path = os.path.join(project_folder, f"{epoch}.pth")
         torch.save(model.state_dict(), numbered_path)

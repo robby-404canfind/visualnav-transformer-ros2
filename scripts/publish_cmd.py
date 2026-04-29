@@ -1,3 +1,4 @@
+import time
 from typing import Tuple
 
 import numpy as np
@@ -5,6 +6,7 @@ import rclpy
 import yaml
 from cv_bridge import CvBridge
 from geometry_msgs.msg import Twist
+from rclpy.executors import ExternalShutdownException
 from rclpy.node import Node
 from std_msgs.msg import Float32MultiArray
 
@@ -42,8 +44,8 @@ def pd_controller(waypoint: np.ndarray) -> Tuple[float]:
         v = 0
         w = np.sign(dy) * np.pi / (2 * DT)
     else:
-        v = LINEAR_VEL * dx / np.abs(dy)
-        w = np.arctan(dy / dx)
+        v = LINEAR_VEL * dx / max(np.abs(dy), EPS)
+        w = np.arctan2(dy, dx)
     v = np.clip(v, -MAX_V, MAX_V)
     w = np.clip(w, -MAX_W, MAX_W)
     return v, w
@@ -71,13 +73,29 @@ class VelPublisher(Node):
         twist.angular.z = w
         self.publisher.publish(twist)
 
+    def publish_stop(self):
+        twist = Twist()
+        for _ in range(3):
+            self.publisher.publish(twist)
+            time.sleep(0.05)
+
 
 def main(args=None):
     rclpy.init(args=args)
     node = VelPublisher()
-    rclpy.spin(node)
-    node.destroy_node()
-    rclpy.shutdown()
+    try:
+        rclpy.spin(node)
+    except (KeyboardInterrupt, ExternalShutdownException):
+        pass
+    finally:
+        try:
+            if rclpy.ok():
+                node.publish_stop()
+        except Exception:
+            pass
+        node.destroy_node()
+        if rclpy.ok():
+            rclpy.shutdown()
 
 
 if __name__ == "__main__":

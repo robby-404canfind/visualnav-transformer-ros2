@@ -6,11 +6,13 @@ run_name: nomad_r1_finetune
 load_run: pretrained_nomad
 use_wandb: False
 train: True
-batch_size: 32
-eval_batch_size: 32
+# Conservative defaults for the Docker workflow in README.md.
+# Larger values may require --ipc=host or a larger --shm-size.
+batch_size: 16
+eval_batch_size: 16
 epochs: 20
 gpu_ids: [0]
-num_workers: 4
+num_workers: 2
 lr: 1e-5
 optimizer: adamw
 clipping: False
