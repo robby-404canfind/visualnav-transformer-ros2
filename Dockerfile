@@ -67,7 +67,7 @@ COPY . /visualnav-transformer
 # Install dependencies using Poetry
 RUN poetry install --no-interaction --no-ansi
 
-RUN mkdir /visualnav-transformer/model_weights
+RUN mkdir -p /visualnav-transformer/model_weights
 RUN gdown https://drive.google.com/uc?id=1YJhkkMJAYOiKNyCaelbS_alpUpAJsOUb -O /visualnav-transformer/model_weights/nomad.pth
 
 # Set the entrypoint

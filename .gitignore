@@ -3,6 +3,10 @@ train/datasets/*
 train/vint_train/data/data_splits/*
 train/wandb/*
 train/gnm_dataset/*
+src/visualnav_transformer/train/logs/*
+datasets/*
+data_splits/*
+session_*.csv
 *_test.yaml
 
 *.png
